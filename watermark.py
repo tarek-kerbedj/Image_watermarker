@@ -1,66 +1,108 @@
-#Importing Libraries
-import math
-from time import perf_counter
 import os
-from concurrent.futures import ThreadPoolExecutor
+import math
+import random
+from time import perf_counter
+from concurrent.futures import ThreadPoolExecutor,ProcessPoolExecutor
 from PIL import Image, ImageDraw, ImageFont
-from tkinter import ttk,LabelFrame,Entry
-from os import makedirs
-from os.path import isdir,join
-import tkinter
-from tkinter import filedialog
-## in case you wanna use the simplistic GUI
-root = tkinter.Tk()
-folder = filedialog.askdirectory(parent=root,initialdir="/",title='Please select a directory')
-output_folder=filedialog.askdirectory(parent=root,initialdir="/",title='Please select output directory')
-# insert a word here
-text = ""
-## in case you wanna use the command line only
-#folder=input('Choose an input directory... \n')
-#output_folder=input('Choose an output directory ... \n')
-#if not isdir(output):
-        #if the folder doesnt exist , create one
- #           makedirs(output)
+from PyQt5.QtWidgets import QApplication, QFileDialog, QLabel, QLineEdit, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from utils import extract_watermark,apply_watermark,watermark_images
 
-# setting a custom threshold value to make the images black and white
-thresh = 120
-fn = lambda x : 255 if x > thresh else 0
-# select a custom font , with font size
-font = ImageFont.truetype("micross.ttf", 20)
-# extracting images paths , and folder names at the same time
-img_paths=[(os.path.join(folder,file),file) for file in os.listdir(folder) if file.endswith(".png") or file.endswith(".jpg")]
-def extract(img):
-    # extract region of watermark 
-    width, height = img.size 
-    # apply binarization to see the dominating pixels
-    im1 = img.crop((0, height-50,100 , height)).convert('L').point(fn,'1')
-    pixels = list(im1.getdata())
-    most_common = max(pixels, key = pixels.count)
-    return most_common,width,height
 
-def apply_watermark(img_path):
-        img1,img_name = img_path
-        name = img_name.split('.')[0]
-        # Opening Image , adding an alpha channel & Creating New Text Layer
-        img = Image.open(img1).convert('RGBA')
-        value,width,height=extract(img)
-        txt = Image.new('RGBA', img.size, (255,255,255,0))        
-        d = ImageDraw.Draw(txt)
-        #width, height = img.size 
-        textwidth, textheight = d.textsize(text, font)
-        x = 0
-        y = height-50  
-        # Applying Text depending on the dominant pixel value
-        v = abs(value-255)
-        d.text((x,y), text, fill=(v,v,v,125), font=font)
-  #Combining Original Image with Text and Saving
-        watermarked = Image.alpha_composite(img, txt)
-        #watermarked.save(str(random.random())+'watermark'+".png")
-        watermarked.save(output_folder+'/'+name+'_watermark'+".png")
 
-t1=perf_counter()
-with ThreadPoolExecutor() as executor:
-    executor.map(apply_watermark,img_paths)
-t2=perf_counter()
-print(f'done in {t2-t1} seconds')
-print(f'processed {len(img_paths)} images')
+
+
+
+class WatermarkApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Watermark App")
+        self.setGeometry(100, 100, 400, 200)
+
+        self.input_folder = ""
+        self.output_folder = ""
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        widget = QWidget(self)
+        layout = QVBoxLayout(widget)
+
+        self.input_label = QLabel("Input Directory:")
+        layout.addWidget(self.input_label)
+
+        self.input_path_label = QLabel("")
+        layout.addWidget(self.input_path_label)
+
+        self.input_button = QPushButton("Select Input Directory")
+        self.input_button.clicked.connect(self.select_input_directory)
+        layout.addWidget(self.input_button)
+
+        self.output_label = QLabel("Output Directory:")
+        layout.addWidget(self.output_label)
+
+        self.output_path_label = QLabel("")
+        layout.addWidget(self.output_path_label)
+
+        self.output_button = QPushButton("Select Output Directory")
+        self.output_button.clicked.connect(self.select_output_directory)
+        layout.addWidget(self.output_button)
+
+        self.text_label = QLabel("Watermark Text:")
+        layout.addWidget(self.text_label)
+
+
+
+        self.text_input = QLineEdit()
+        layout.addWidget(self.text_input)
+
+        self.font_size_label = QLabel("Font Size:")
+        layout.addWidget(self.font_size_label)
+
+        self.font_size_input = QLineEdit()
+        layout.addWidget(self.font_size_input)
+
+        self.watermark_button = QPushButton("Apply Watermark")
+        self.watermark_button.clicked.connect(self.apply_watermark)
+        layout.addWidget(self.watermark_button)
+
+        self.status_label = QLabel("")
+        layout.addWidget(self.status_label)
+
+        self.setCentralWidget(widget)
+
+    def select_input_directory(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Input Directory")
+        self.input_folder = folder
+        self.input_path_label.setText(folder)
+
+    def select_output_directory(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Output Directory")
+        self.output_folder = folder
+        self.output_path_label.setText(folder)
+
+    def apply_watermark(self):
+        if not self.input_folder or not self.output_folder:
+            self.status_label.setText("Please select input and output directories.")
+            return
+
+        text = self.text_input.text()
+        font_size = int(self.font_size_input.text())
+
+        watermark_images(self.input_folder, self.output_folder, text, font_size)
+
+        self.status_label.setText("Watermark applied to images.")
+
+        self.input_folder = ""
+        self.output_folder = ""
+        self.input_path_label.setText("")
+        self.output_path_label.setText("")
+        self.text_input.setText("")
+        self.font_size_input.setText("")
+
+        self.status_label.setText("Watermark applied to images.")
+
+if __name__ == '__main__':
+    app = QApplication([])
+    window = WatermarkApp()
+    window.show()
+    app.exec_()
