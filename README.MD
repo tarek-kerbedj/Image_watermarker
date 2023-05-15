@@ -4,7 +4,7 @@
 ## requirments
 - Install PyQt5
 ```
-pip install tkinter
+pip install PyQt5
 ```
 - Install PIL
 ```
