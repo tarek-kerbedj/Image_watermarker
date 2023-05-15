@@ -18,4 +18,3 @@ python watermark.py
 2) select your input directory when a dialogue pops up
 3) same thing for the output directory 
 4) input your desired watermark as well as the size ( which is 30p by default)
-5) 
